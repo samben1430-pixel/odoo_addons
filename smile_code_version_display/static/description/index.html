@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Code Version Display</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #764ba2;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+        }
+        .badge-demo {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .feature {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .screenshot-placeholder {
+            background: #e9ecef;
+            padding: 60px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px dashed #667eea;
+        }
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        ul li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔖 Code Version Display</h1>
+
+        <p><strong>Display your code version in the Odoo systray for easy identification!</strong></p>
+
+        <div class="badge-demo">
+            <i>🔀</i> v1.2.3
+        </div>
+
+        <h2>Features</h2>
+        <div class="feature">
+            <ul>
+                <li>Beautiful gradient badge in systray</li>
+                <li>Configurable via system parameter</li>
+                <li>Works with or without smile_upgrade</li>
+                <li>Perfect for DEV/QA/STAGING environments</li>
+                <li>Minimal performance impact</li>
+                <li>Easy integration with ribbon modules</li>
+            </ul>
+        </div>
+
+        <h2>Quick Setup</h2>
+        <ol>
+            <li>Install the module</li>
+            <li>Set system parameter <code>code.version.display = True</code></li>
+            <li>Set system parameter <code>code.version = 1.2.3</code> (or use smile_upgrade)</li>
+            <li>Refresh your browser</li>
+            <li>See your version in the top bar!</li>
+        </ol>
+
+        <div class="screenshot-placeholder">
+            <p><em>The version badge appears in the top navigation bar</em></p>
+        </div>
+
+        <h2>Use Cases</h2>
+        <div class="feature">
+            <h3>🔧 Development Environment</h3>
+            <p>Quickly see which version you're testing without checking git or deployment logs.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🧪 QA Environment</h3>
+            <p>Testers can easily report which version has bugs - no more confusion!</p>
+        </div>
+
+        <div class="feature">
+            <h3>🚀 Staging Environment</h3>
+            <p>Verify the correct version is deployed before promoting to production.</p>
+        </div>
+
+        <h2>Integration</h2>
+        <p>Works great with environment ribbon modules! Use both together:</p>
+        <ul>
+            <li><strong>Ribbon</strong>: Shows environment (DEV/QA/PROD)</li>
+            <li><strong>Version Badge</strong>: Shows code version</li>
+        </ul>
+
+        <h2>Configuration</h2>
+        <p>Enable via <strong>Settings → Technical → System Parameters</strong>:</p>
+        <ul>
+            <li><code>code.version.display = True</code> - Enable the badge</li>
+            <li><code>code.version = 1.2.3</code> - Set your version</li>
+        </ul>
+
+        <h2>Support</h2>
+        <p>Maintained by <strong>Smile SA</strong> - European expert in open source solutions since 1991.</p>
+        <p>Report issues on <a href="https://github.com/Smile-SA/odoo_addons/issues">GitHub</a>.</p>
+    </div>
+</body>
+</html>

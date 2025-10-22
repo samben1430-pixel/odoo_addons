@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- System parameter to enable/disable code version display in systray -->
+        <record id="code_version_display_param" model="ir.config_parameter">
+            <field name="key">code.version.display</field>
+            <field name="value">False</field>
+        </record>
+
+    </data>
+</odoo>

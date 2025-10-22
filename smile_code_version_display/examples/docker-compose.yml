@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Exemple pour environnement DEV
+  odoo-dev:
+    image: odoo:17.0
+    container_name: odoo_dev
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=odoo
+      - CODE_VERSION=1.0.0-dev
+    volumes:
+      - ../:/mnt/extra-addons/smile_code_version_display
+    ports:
+      - "8069:8069"
+    depends_on:
+      - postgres
+    command: >
+      bash -c "
+      odoo --load=web,smile_code_version_display -d odoo_dev -i smile_code_version_display &&
+      psql -h postgres -U odoo -d odoo_dev -c \"
+        INSERT INTO ir_config_parameter (key, value) VALUES
+          ('code.version', '$$CODE_VERSION'),
+          ('code.version.display', 'True')
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+      \"
+      "
+
+  # Exemple pour environnement QA
+  odoo-qa:
+    image: odoo:17.0
+    container_name: odoo_qa
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=odoo
+      - CODE_VERSION=1.0.0-rc1
+    volumes:
+      - ../:/mnt/extra-addons/smile_code_version_display
+    ports:
+      - "8070:8069"
+    depends_on:
+      - postgres
+    profiles:
+      - qa
+    command: >
+      bash -c "
+      odoo --load=web,smile_code_version_display -d odoo_qa -i smile_code_version_display &&
+      psql -h postgres -U odoo -d odoo_qa -c \"
+        INSERT INTO ir_config_parameter (key, value) VALUES
+          ('code.version', '$$CODE_VERSION'),
+          ('code.version.display', 'True')
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+      \"
+      "
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_DB=postgres
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+
+volumes:
+  odoo-db-data:
