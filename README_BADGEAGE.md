@@ -26,6 +26,31 @@ chmod +x gestion_badgeage.py
 
 ## 💡 Utilisation
 
+### ⭐ Mode interactif (RECOMMANDÉ) - En 2 phases
+
+C'est le mode recommandé pour une utilisation quotidienne. Il fonctionne en 2 étapes :
+
+**PHASE 1** : Affiche l'heure limite avant laquelle vous devez badger pour la pause
+**PHASE 2** : Calcule votre heure de fin selon l'heure réelle de votre badge
+
+```bash
+python3 gestion_badgeage.py 09:00 --interactif
+# ou raccourci :
+python3 gestion_badgeage.py 09:00 -i
+```
+
+**Ce qui se passe :**
+1. Le script affiche l'heure limite (avant 6H de travail)
+2. Vous pouvez lancer un minuteur/chronomètre si vous voulez
+3. Quand vous badgez réellement pour la pause, vous entrez l'heure
+4. Le script calcule votre heure de fin exacte
+
+**Avantages :**
+- ✅ Vous voyez clairement l'heure limite à ne pas dépasser
+- ✅ Vous entrez l'heure réelle de votre badge (plus flexible)
+- ✅ Détection automatique si vous dépassez 6H (pénalité affichée)
+- ✅ Calcul précis de votre fin de journée
+
 ### Mode basique - Affichage des horaires
 
 ```bash
@@ -138,39 +163,61 @@ Appuyez sur `Ctrl+C` pour arrêter le minuteur ou chronomètre en cours.
 Le script applique la logique suivante :
 
 1. **Premier badge** à T0
-2. **Calcul de la pause idéale** : T0 + 6h (juste avant les 6 heures réglementaires)
-3. **Vérification des plages obligatoires** : Si la pause chevauche 9h30-11h30 ou 14h30-15h30, elle est automatiquement ajustée
-4. **Durée de pause** : Aléatoire entre 17 et 27 minutes
-5. **Temps perdu** : 30 min - durée_pause (ex: si pause de 23 min → 7 min perdues)
-6. **Reprise** : Heure de pause + durée de pause
-7. **Fin de journée** : Reprise + (8h - temps avant pause) + temps perdu
+2. **Heure limite de pause** : T0 + 6h maximum (avant les 6 heures réglementaires)
+   - Si l'heure limite tombe dans une plage obligatoire, elle est ajustée AVANT la plage
+3. **Badge de pause réel** : L'heure où vous badgez effectivement
+4. **Vérification de pénalité** :
+   - Si vous partez en pause **AVANT** 6H de travail → ✅ Pas de pénalité
+   - Si vous partez en pause **APRÈS** 6H de travail → ⚠️ Pénalité de **+30 minutes**
+5. **Durée de pause** : Aléatoire entre 17 et 27 minutes
+6. **Temps perdu** : 30 min - durée_pause (ex: si pause de 23 min → 7 min perdues)
+7. **Reprise** : Heure de pause + durée de pause
+8. **Fin de journée** : Reprise + (8h - temps avant pause) + temps perdu + pénalité (si applicable)
 
-## 📝 Exemples concrets
+## 📝 Exemples concrets (Mode Interactif)
 
-### Cas 1 : Début à 08:00 (pas de chevauchement)
-- Début : 08:00
-- Pause : 14:00 (après 6h, avant la plage 14:30-15:30) ✅
-- Durée pause : 24 minutes
-- Reprise : 14:24
-- Temps perdu : 6 minutes
-- Fin : 16:30
-
-### Cas 2 : Début à 09:00 (chevauchement avec 14:30-15:30)
+### ✅ Cas 1 : Début 09:00, pause à 13:45 (AVANT 6H - OK)
+**Phase 1** :
 - Début : 09:00
-- Pause idéale : 15:00 ❌ (chevauche 14:30-15:30)
-- **Pause ajustée** : 14:12 ✅ (reprend à 14:30)
-- Durée pause : 18 minutes
-- Reprise : 14:30 (début de la plage obligatoire)
-- Temps perdu : 12 minutes
-- Fin : 17:30
+- Heure limite : 14:30 (ajustée car 15:00 tombe dans 14:30-15:30)
+- Vous avez 5h30 avant la limite
 
-### Cas 3 : Début à 10:00 (pas de chevauchement)
-- Début : 10:00
-- Pause : 16:00 (après 6h, après la plage 14:30-15:30) ✅
-- Durée pause : 22 minutes
-- Reprise : 16:22
-- Temps perdu : 8 minutes
-- Fin : 18:30
+**Phase 2** :
+- Badge pause réel : 13:45 (4h45 de travail)
+- ✅ Pas de pénalité (< 6H)
+- Durée pause : 21 min
+- Reprise : 14:06
+- Temps perdu : 9 min
+- **Fin : 17:30** (8h09 de travail)
+
+### ⚠️ Cas 2 : Début 09:00, pause à 15:30 (APRÈS 6H - PÉNALITÉ)
+**Phase 1** :
+- Début : 09:00
+- Heure limite : 14:30
+- Vous avez 5h30 avant la limite
+
+**Phase 2** :
+- Badge pause réel : 15:30 (6h30 de travail)
+- ⚠️ **PÉNALITÉ +30 min** (dépassement 6H)
+- Durée pause : 18 min
+- Reprise : 15:48
+- Temps perdu : 12 min
+- Pénalité : 30 min
+- **Fin : 18:00** (8h42 de travail au lieu de 8h12)
+
+### ✅ Cas 3 : Début 08:00, pause à 13:30 (AVANT 6H - OK)
+**Phase 1** :
+- Début : 08:00
+- Heure limite : 14:00 (pas de chevauchement)
+- Vous avez 6h00 avant la limite
+
+**Phase 2** :
+- Badge pause réel : 13:30 (5h30 de travail)
+- ✅ Pas de pénalité
+- Durée pause : 19 min
+- Reprise : 13:49
+- Temps perdu : 11 min
+- **Fin : 16:30** (8h11 de travail)
 
 ## 🎲 Pourquoi une pause aléatoire ?
 
@@ -181,23 +228,29 @@ La pause est générée aléatoirement entre 17 et 27 minutes pour :
 
 ## ❓ FAQ
 
-**Q : Pourquoi je dois travailler 8h03 ou 8h07 et pas exactement 8h ?**
-R : Parce que votre pause dure moins de 30 minutes. La loi autorise 30 min de pause, donc si vous prenez moins, le temps non utilisé s'ajoute à votre journée.
+**Q : C'est quoi le mode interactif et pourquoi l'utiliser ?**
+R : Le mode interactif (`--interactif` ou `-i`) vous montre d'abord l'heure limite pour partir en pause (avant 6H), puis vous demande l'heure réelle de votre badge. C'est plus flexible car vous n'êtes pas obligé de partir exactement à 6H. C'est le mode RECOMMANDÉ pour une utilisation quotidienne.
 
-**Q : Comment faire exactement 8h ?**
-R : Prenez exactement 30 minutes de pause. Mais le script génère entre 17-27 min pour optimiser votre temps.
+**Q : Que se passe-t-il si je dépasse 6H avant de partir en pause ?**
+R : Vous aurez une **pénalité de +30 minutes** ajoutée à votre journée de travail. Par exemple, si vous devriez finir à 17:30 mais que vous dépassez 6H, vous finirez à 18:00.
 
-**Q : Je peux changer la fourchette de pause ?**
-R : Oui, modifiez les variables `PAUSE_RANDOM_MIN` et `PAUSE_RANDOM_MAX` dans le code (lignes 30-31).
+**Q : Pourquoi je dois travailler 8h09 ou 8h12 et pas exactement 8h ?**
+R : Parce que votre pause dure moins de 30 minutes. La loi autorise 30 min de pause, donc si vous prenez 21 min, les 9 min restantes (30-21) s'ajoutent à votre journée de travail.
 
-**Q : Pourquoi ma pause n'est pas à 6h exactement après mon début ?**
-R : Si votre pause de 6h tomberait pendant une plage de présence obligatoire (9h30-11h30 ou 14h30-15h30), le script la déplace automatiquement pour respecter ces contraintes.
+**Q : Comment faire exactement 8h de travail ?**
+R : Il faudrait prendre exactement 30 minutes de pause ET ne pas dépasser les 6H avant la pause. Mais le script génère une pause aléatoire entre 17-27 min pour optimiser votre temps.
 
-**Q : Que faire si je commence très tôt ou très tard ?**
-R : Le script s'adapte automatiquement. Si vous commencez à 07:00, la pause sera vers 13:00 (pas de chevauchement). Si vous commencez à 11:00, la pause sera vers 17:00.
+**Q : Pourquoi l'heure limite n'est pas toujours à 6h après mon début ?**
+R : Si 6H après votre début tombe pendant une plage de présence obligatoire (9h30-11h30 ou 14h30-15h30), l'heure limite est ajustée AVANT la plage. Par exemple, si vous commencez à 09:00, l'heure limite sera 14:30 (au lieu de 15:00).
+
+**Q : Je peux utiliser le mode interactif avec un minuteur ?**
+R : Oui ! En mode interactif, après avoir vu l'heure limite, le script vous propose de lancer un minuteur jusqu'à cette heure ou un chronomètre pour suivre votre temps de travail.
 
 **Q : Je peux changer les plages de présence obligatoire ?**
 R : Oui, modifiez la constante `PRESENCE_OBLIGATOIRE` dans le code (lignes 34-37). Format : `("HH:MM", "HH:MM")`.
+
+**Q : Je peux changer la fourchette de pause ?**
+R : Oui, modifiez les variables `PAUSE_RANDOM_MIN` et `PAUSE_RANDOM_MAX` dans le code (lignes 30-31).
 
 ## 📝 Licence
 
