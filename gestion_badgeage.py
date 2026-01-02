@@ -9,6 +9,7 @@ Contraintes :
 - Pause minimum : 15 minutes (pour être valable)
 - Pause maximum légale : 30 minutes (non décomptées du temps de travail)
 - Si pause < 30min : le temps non utilisé (30 - durée_pause) s'ajoute au temps de travail
+- Plages de présence obligatoire : 9h30-11h30 et 14h30-15h30 (pas de pause possible)
 """
 
 import argparse
@@ -29,6 +30,12 @@ class GestionBadgeage:
     PAUSE_RANDOM_MIN = 17            # minutes
     PAUSE_RANDOM_MAX = 27            # minutes
 
+    # Plages de présence obligatoire (heures en format HH:MM)
+    PRESENCE_OBLIGATOIRE = [
+        ("09:30", "11:30"),  # Matin
+        ("14:30", "15:30"),  # Après-midi
+    ]
+
     def __init__(self, heure_debut):
         """
         Initialise avec l'heure du premier pointage.
@@ -47,10 +54,120 @@ class GestionBadgeage:
         # Calcul des heures clés
         self.calculer_horaires()
 
+    def _parse_time(self, time_str):
+        """Parse une chaîne HH:MM et retourne un datetime avec la date du début."""
+        time_obj = datetime.strptime(time_str, "%H:%M")
+        return self.heure_debut.replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
+
+    def _chevauche_plage_obligatoire(self, debut, fin):
+        """
+        Vérifie si une période chevauche une plage de présence obligatoire.
+
+        Returns:
+            tuple: (bool, str) - (True si chevauchement, nom de la plage)
+        """
+        for idx, (plage_debut_str, plage_fin_str) in enumerate(self.PRESENCE_OBLIGATOIRE):
+            plage_debut = self._parse_time(plage_debut_str)
+            plage_fin = self._parse_time(plage_fin_str)
+
+            # Chevauchement si :
+            # - La pause commence pendant la plage OU
+            # - La pause se termine pendant la plage OU
+            # - La pause englobe complètement la plage
+            if (plage_debut <= debut < plage_fin or
+                plage_debut < fin <= plage_fin or
+                debut <= plage_debut and fin >= plage_fin):
+                plage_nom = "9h30-11h30 (matin)" if idx == 0 else "14h30-15h30 (après-midi)"
+                return True, plage_nom
+
+        return False, None
+
+    def _ajuster_pause_plage_obligatoire(self, heure_pause_ideale):
+        """
+        Ajuste l'heure de pause si elle chevauche une plage de présence obligatoire.
+
+        Returns:
+            tuple: (heure_pause_ajustee, temps_travail_avant_pause, avertissement)
+        """
+        heure_reprise_ideale = heure_pause_ideale + timedelta(minutes=self.duree_pause)
+        chevauche, plage_nom = self._chevauche_plage_obligatoire(heure_pause_ideale, heure_reprise_ideale)
+
+        if not chevauche:
+            # Pas de problème, on garde l'heure idéale
+            temps_avant = int((heure_pause_ideale - self.heure_debut).total_seconds() / 60)
+            return heure_pause_ideale, temps_avant, None
+
+        # Il y a chevauchement, il faut ajuster
+        # Trouver quelle plage cause le problème
+        plage_probleme = None
+        for idx, (plage_debut_str, plage_fin_str) in enumerate(self.PRESENCE_OBLIGATOIRE):
+            plage_debut = self._parse_time(plage_debut_str)
+            plage_fin = self._parse_time(plage_fin_str)
+            if (plage_debut <= heure_pause_ideale < plage_fin or
+                plage_debut < heure_reprise_ideale <= plage_fin or
+                heure_pause_ideale <= plage_debut and heure_reprise_ideale >= plage_fin):
+                plage_probleme = (plage_debut, plage_fin, plage_debut_str, plage_fin_str)
+                break
+
+        if not plage_probleme:
+            temps_avant = int((heure_pause_ideale - self.heure_debut).total_seconds() / 60)
+            return heure_pause_ideale, temps_avant, None
+
+        plage_debut, plage_fin, plage_debut_str, plage_fin_str = plage_probleme
+        avertissement = f"⚠️  AJUSTEMENT : La pause idéale ({heure_pause_ideale.strftime('%H:%M')}) chevauche {plage_debut_str}-{plage_fin_str}"
+
+        # Option 1: Terminer la pause AVANT le début de la plage problématique
+        heure_reprise_avant = plage_debut
+        heure_pause_avant = heure_reprise_avant - timedelta(minutes=self.duree_pause)
+        temps_avant_avant = int((heure_pause_avant - self.heure_debut).total_seconds() / 60)
+
+        # Option 2: Commencer la pause APRÈS la fin de la plage problématique
+        heure_pause_apres = plage_fin
+        heure_reprise_apres = heure_pause_apres + timedelta(minutes=self.duree_pause)
+        temps_avant_apres = int((heure_pause_apres - self.heure_debut).total_seconds() / 60)
+
+        # Choisir la meilleure option
+        options = []
+
+        # Vérifier option AVANT
+        if temps_avant_avant > 0 and heure_pause_avant >= self.heure_debut:
+            chevauche_avant, _ = self._chevauche_plage_obligatoire(heure_pause_avant, heure_reprise_avant)
+            if not chevauche_avant:
+                options.append(('avant', heure_pause_avant, temps_avant_avant))
+
+        # Vérifier option APRÈS
+        if temps_avant_apres <= self.DUREE_AVANT_PAUSE:
+            chevauche_apres, _ = self._chevauche_plage_obligatoire(heure_pause_apres, heure_reprise_apres)
+            if not chevauche_apres:
+                options.append(('apres', heure_pause_apres, temps_avant_apres))
+
+        # Choisir l'option qui respecte le mieux la contrainte des 6h
+        if options:
+            # Privilégier celle qui est la plus proche de 6h (360 min)
+            meilleure = min(options, key=lambda x: abs(x[2] - self.DUREE_AVANT_PAUSE))
+            type_opt, heure_pause, temps_avant = meilleure
+
+            if type_opt == 'avant':
+                avertissement += f"\n   → Pause déplacée AVANT la plage ({heure_pause.strftime('%H:%M')})"
+            else:
+                avertissement += f"\n   → Pause déplacée APRÈS la plage ({heure_pause.strftime('%H:%M')})"
+
+            return heure_pause, temps_avant, avertissement
+
+        # Si aucune option ne fonctionne, on retourne la pause idéale avec un avertissement renforcé
+        temps_avant = int((heure_pause_ideale - self.heure_debut).total_seconds() / 60)
+        avertissement += "\n   ⚠️  ATTENTION: Impossible d'éviter complètement le chevauchement!"
+        return heure_pause_ideale, temps_avant, avertissement
+
     def calculer_horaires(self):
-        """Calcule tous les horaires de la journée."""
-        # Heure de départ en pause (avant 6H de travail)
-        self.heure_pause = self.heure_debut + timedelta(minutes=self.DUREE_AVANT_PAUSE)
+        """Calcule tous les horaires de la journée en tenant compte des plages obligatoires."""
+        # Heure de départ en pause idéale (avant 6H de travail)
+        heure_pause_ideale = self.heure_debut + timedelta(minutes=self.DUREE_AVANT_PAUSE)
+
+        # Ajuster si nécessaire pour respecter les plages de présence obligatoire
+        self.heure_pause, self.temps_avant_pause, self.avertissement = self._ajuster_pause_plage_obligatoire(
+            heure_pause_ideale
+        )
 
         # Heure de reprise après pause
         self.heure_reprise = self.heure_pause + timedelta(minutes=self.duree_pause)
@@ -59,7 +176,7 @@ class GestionBadgeage:
         self.temps_perdu = self.PAUSE_MAX - self.duree_pause
 
         # Temps de travail restant après la pause
-        temps_apres_pause = (self.DUREE_TRAVAIL_JOURNEE - self.DUREE_AVANT_PAUSE) + self.temps_perdu
+        temps_apres_pause = (self.DUREE_TRAVAIL_JOURNEE - self.temps_avant_pause) + self.temps_perdu
 
         # Heure de fin
         self.heure_fin = self.heure_reprise + timedelta(minutes=temps_apres_pause)
@@ -69,22 +186,33 @@ class GestionBadgeage:
         print("\n" + "="*60)
         print(" PLANNING DE VOTRE JOURNÉE DE TRAVAIL")
         print("="*60)
+
+        # Affichage des plages de présence obligatoire
+        print("\n📅 PLAGES DE PRÉSENCE OBLIGATOIRE :")
+        for plage_debut, plage_fin in self.PRESENCE_OBLIGATOIRE:
+            print(f"   • {plage_debut} - {plage_fin}")
+
         print(f"\n🕐 Premier pointage (début) : {self.heure_debut.strftime('%H:%M')}")
-        print(f"\n⏸️  Départ en PAUSE (avant 6H) : {self.heure_pause.strftime('%H:%M')}")
+
+        # Affichage de l'avertissement si nécessaire
+        if self.avertissement:
+            print(f"\n{self.avertissement}")
+
+        print(f"\n⏸️  Départ en PAUSE : {self.heure_pause.strftime('%H:%M')}")
         print(f"   └─ Durée de la pause : {self.duree_pause} minutes")
         print(f"   └─ Temps perdu (30min - {self.duree_pause}min) : {self.temps_perdu} minutes")
         print(f"\n▶️  Reprise du travail : {self.heure_reprise.strftime('%H:%M')}")
         print(f"\n🏁 Fin de journée : {self.heure_fin.strftime('%H:%M')}")
 
         # Calcul du temps total de travail
-        temps_avant_pause = self.DUREE_AVANT_PAUSE
-        temps_apres_pause = (self.DUREE_TRAVAIL_JOURNEE - self.DUREE_AVANT_PAUSE) + self.temps_perdu
+        temps_avant_pause = self.temps_avant_pause
+        temps_apres_pause = (self.DUREE_TRAVAIL_JOURNEE - self.temps_avant_pause) + self.temps_perdu
         temps_total = temps_avant_pause + temps_apres_pause
 
         print(f"\n📊 Récapitulatif :")
-        print(f"   - Temps de travail matin : {temps_avant_pause // 60}h{temps_avant_pause % 60:02d}")
+        print(f"   - Temps de travail avant pause : {temps_avant_pause // 60}h{temps_avant_pause % 60:02d}")
         print(f"   - Temps de pause : {self.duree_pause} min")
-        print(f"   - Temps de travail après-midi : {temps_apres_pause // 60}h{temps_apres_pause % 60:02d}")
+        print(f"   - Temps de travail après pause : {temps_apres_pause // 60}h{temps_apres_pause % 60:02d}")
         print(f"   - TOTAL travail effectif : {temps_total // 60}h{temps_total % 60:02d}")
         print("="*60 + "\n")
 

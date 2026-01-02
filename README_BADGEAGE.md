@@ -5,12 +5,16 @@ Ce script vous aide à gérer vos heures de travail avec les contraintes de paus
 ## 📋 Contraintes
 
 - **Durée de travail** : 8 heures par jour
-- **Pause obligatoire** : Avant d'atteindre 6 heures de travail
+- **Pause obligatoire** : Avant d'atteindre 6 heures de travail (dans la mesure du possible)
 - **Durée de pause** :
   - Minimum : 15 minutes (pour être valable)
   - Optimale : 17-27 minutes (calculée aléatoirement par le script)
   - Maximum légal : 30 minutes (temps non décompté du travail)
 - **Perte de temps** : Si pause < 30 min, le temps restant (30 - durée_pause) s'ajoute à votre temps de travail
+- **Plages de présence obligatoire** :
+  - **9h30 - 11h30** (matin)
+  - **14h30 - 15h30** (après-midi)
+  - Le script ajuste automatiquement la pause pour ne pas chevaucher ces plages
 
 ## 🚀 Installation
 
@@ -134,19 +138,39 @@ Appuyez sur `Ctrl+C` pour arrêter le minuteur ou chronomètre en cours.
 Le script applique la logique suivante :
 
 1. **Premier badge** à T0
-2. **Départ en pause** : T0 + 6h (juste avant les 6 heures réglementaires)
-3. **Durée de pause** : Aléatoire entre 17 et 27 minutes
-4. **Temps perdu** : 30 min - durée_pause (ex: si pause de 23 min → 7 min perdues)
-5. **Reprise** : Heure de pause + durée de pause
-6. **Fin de journée** : Reprise + (2h de travail restant) + temps perdu
+2. **Calcul de la pause idéale** : T0 + 6h (juste avant les 6 heures réglementaires)
+3. **Vérification des plages obligatoires** : Si la pause chevauche 9h30-11h30 ou 14h30-15h30, elle est automatiquement ajustée
+4. **Durée de pause** : Aléatoire entre 17 et 27 minutes
+5. **Temps perdu** : 30 min - durée_pause (ex: si pause de 23 min → 7 min perdues)
+6. **Reprise** : Heure de pause + durée de pause
+7. **Fin de journée** : Reprise + (8h - temps avant pause) + temps perdu
 
-**Exemple :**
+## 📝 Exemples concrets
+
+### Cas 1 : Début à 08:00 (pas de chevauchement)
+- Début : 08:00
+- Pause : 14:00 (après 6h, avant la plage 14:30-15:30) ✅
+- Durée pause : 24 minutes
+- Reprise : 14:24
+- Temps perdu : 6 minutes
+- Fin : 16:30
+
+### Cas 2 : Début à 09:00 (chevauchement avec 14:30-15:30)
 - Début : 09:00
-- Pause : 15:00 (après 6h)
-- Durée pause : 23 minutes
-- Reprise : 15:23
-- Temps perdu : 7 minutes
-- Fin : 15:23 + 2h07 = 17:30
+- Pause idéale : 15:00 ❌ (chevauche 14:30-15:30)
+- **Pause ajustée** : 14:12 ✅ (reprend à 14:30)
+- Durée pause : 18 minutes
+- Reprise : 14:30 (début de la plage obligatoire)
+- Temps perdu : 12 minutes
+- Fin : 17:30
+
+### Cas 3 : Début à 10:00 (pas de chevauchement)
+- Début : 10:00
+- Pause : 16:00 (après 6h, après la plage 14:30-15:30) ✅
+- Durée pause : 22 minutes
+- Reprise : 16:22
+- Temps perdu : 8 minutes
+- Fin : 18:30
 
 ## 🎲 Pourquoi une pause aléatoire ?
 
@@ -164,7 +188,16 @@ R : Parce que votre pause dure moins de 30 minutes. La loi autorise 30 min de pa
 R : Prenez exactement 30 minutes de pause. Mais le script génère entre 17-27 min pour optimiser votre temps.
 
 **Q : Je peux changer la fourchette de pause ?**
-R : Oui, modifiez les variables `PAUSE_RANDOM_MIN` et `PAUSE_RANDOM_MAX` dans le code (lignes 32-33).
+R : Oui, modifiez les variables `PAUSE_RANDOM_MIN` et `PAUSE_RANDOM_MAX` dans le code (lignes 30-31).
+
+**Q : Pourquoi ma pause n'est pas à 6h exactement après mon début ?**
+R : Si votre pause de 6h tomberait pendant une plage de présence obligatoire (9h30-11h30 ou 14h30-15h30), le script la déplace automatiquement pour respecter ces contraintes.
+
+**Q : Que faire si je commence très tôt ou très tard ?**
+R : Le script s'adapte automatiquement. Si vous commencez à 07:00, la pause sera vers 13:00 (pas de chevauchement). Si vous commencez à 11:00, la pause sera vers 17:00.
+
+**Q : Je peux changer les plages de présence obligatoire ?**
+R : Oui, modifiez la constante `PRESENCE_OBLIGATOIRE` dans le code (lignes 34-37). Format : `("HH:MM", "HH:MM")`.
 
 ## 📝 Licence
 
